@@ -4,5 +4,5 @@ Learn everything about backend web development: Golang, Postgres, Redis, Gin, gR
 
 ## Tools
 
-(SQLC)['']
-(Migrate)['']
+[SQLC]('https://sqlc.dev/')
+[Migrate]('https://github.com/golang-migrate/migrate')
