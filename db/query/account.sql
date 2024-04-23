@@ -7,6 +7,10 @@ RETURNING *;
 SELECT * FROM accounts
 WHERE id = @id LIMIT 1;
 
+-- name: GetAccountForUpdate :one
+SELECT * FROM accounts
+WHERE id = @id LIMIT 1 FOR NO KEY UPDATE;
+
 -- name: ListAccounts :many
 SELECT * FROM accounts
 WHERE owner = @owner
@@ -17,6 +21,12 @@ OFFSET $2;
 -- name: UpdateAccount :one
 UPDATE accounts
 SET balance = @balance
+WHERE id = @id
+RETURNING *;
+
+-- name: AddAccountBalance :one
+UPDATE accounts
+SET balance = balance + @amount
 WHERE id = @id
 RETURNING *;
 
