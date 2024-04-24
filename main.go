@@ -25,7 +25,7 @@ func main() {
 		log.Fatal("cannot connect to db:", err)
 	}
 
-	server := api.NewServer(*db.NewStore(conn))
+	server := api.NewServer(db.NewStore(conn))
 	server.LoadRouters()
 
 	if err = server.Start(config.ServerAddress); err != nil {

@@ -50,7 +50,7 @@ func (server *Server) getAccount(ctx *gin.Context) {
 	account, err := server.store.GetAccount(ctx, req.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusBadRequest, erroResponse(err))
+			ctx.JSON(http.StatusNotFound, erroResponse(err))
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, erroResponse(err))
