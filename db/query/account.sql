@@ -13,7 +13,6 @@ WHERE id = @id LIMIT 1 FOR NO KEY UPDATE;
 
 -- name: ListAccounts :many
 SELECT * FROM accounts
-WHERE owner = @owner
 ORDER BY id
 LIMIT $1
 OFFSET $2;
