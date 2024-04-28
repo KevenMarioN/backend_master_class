@@ -1,28 +1,48 @@
-package db
+package db_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
+	db "github.com/kevenmarion/backend_master_class/db/sqlc"
+	"github.com/kevenmarion/backend_master_class/util"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransferTx(t *testing.T) {
-	store := NewStore(testDB)
+func createRandomAccountReal(t *testing.T) db.Account {
+	arg := db.CreateAccountParams{
+		Owner:    util.RandomOwner(),
+		Balance:  util.RandomMoney(),
+		Currency: util.RandomCurrency(),
+	}
+	result, err := testQueries.CreateAccount(context.Background(), arg)
+	require.NoError(t, err)
+	require.Equal(t, arg.Owner, result.Owner)
+	require.Equal(t, arg.Balance, result.Balance)
+	require.Equal(t, arg.Currency, result.Currency)
 
-	account1 := createRandomAccount(t)
-	account2 := createRandomAccount(t)
+	require.NotZero(t, result.ID)
+	require.NotZero(t, result.CreatedAt)
+
+	return result
+}
+
+func TestTransferTx(t *testing.T) {
+	store := db.NewStore(testDB)
+
+	account1 := createRandomAccountReal(t)
+	account2 := createRandomAccountReal(t)
 	fmt.Println(">> before:", account1.Balance, account2.Balance)
 	// run n concurrent transfer transactions
 	n := 5
 	amount := int64(10)
 	errs := make(chan error)
-	results := make(chan TransferTxResult)
+	results := make(chan db.TransferTxResult)
 
 	for i := 0; i < n; i++ {
 		go func() {
-			result, err := store.TransferTx(context.Background(), TransferTxParams{
+			result, err := store.TransferTx(context.Background(), db.TransferTxParams{
 				FromAccountID: account1.ID,
 				ToAccountID:   account2.ID,
 				Amount:        amount,
@@ -109,10 +129,10 @@ func TestTransferTx(t *testing.T) {
 }
 
 func TestTransferTxDeadlock(t *testing.T) {
-	store := NewStore(testDB)
+	store := db.NewStore(testDB)
 
-	account1 := createRandomAccount(t)
-	account2 := createRandomAccount(t)
+	account1 := createRandomAccountReal(t)
+	account2 := createRandomAccountReal(t)
 	fmt.Println(">> before:", account1.Balance, account2.Balance)
 	// run n concurrent transfer transactions
 
@@ -129,7 +149,7 @@ func TestTransferTxDeadlock(t *testing.T) {
 			toAccountID = account1.ID
 		}
 		go func() {
-			_, err := store.TransferTx(context.Background(), TransferTxParams{
+			_, err := store.TransferTx(context.Background(), db.TransferTxParams{
 				FromAccountID: fromAccountID,
 				ToAccountID:   toAccountID,
 				Amount:        amount,

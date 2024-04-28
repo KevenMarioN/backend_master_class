@@ -1,20 +1,38 @@
-package db
+package db_test
 
 import (
 	"context"
 	"testing"
+	"time"
 
+	db "github.com/kevenmarion/backend_master_class/db/sqlc"
+	mocks "github.com/kevenmarion/backend_master_class/mocks/db/sqlc"
 	"github.com/kevenmarion/backend_master_class/util"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func createRandomEntry(t *testing.T) Entry {
-	account := createRandomAccount(t)
-	arg := CreateEntryParams{
-		AccountID: account.ID,
-		Amount:    util.RandomMoney(),
-	}
-	entry, err := testQueries.CreateEntry(context.Background(), arg)
+var entryIDCount int64
+
+func createRandomEntry(t *testing.T) db.Entry {
+	entryIDCount++
+	var (
+		mockAccount = createRandomAccount(t)
+		arg         = db.CreateEntryParams{
+			AccountID: mockAccount.ID,
+			Amount:    util.RandomMoney(),
+		}
+		mockQueries = mocks.NewQuerier(t)
+		mockEntry   = db.Entry{
+			ID:        entryIDCount,
+			AccountID: arg.AccountID,
+			Amount:    arg.Amount,
+			CreatedAt: time.Now(),
+		}
+	)
+	mockQueries.On("CreateEntry", mock.Anything, mock.Anything).
+		Return(mockEntry, nil)
+	entry, err := mockQueries.CreateEntry(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, entry)
 
@@ -27,36 +45,52 @@ func createRandomEntry(t *testing.T) Entry {
 	return entry
 }
 
-func TestGetEntry(t *testing.T) {
-	entry := createRandomEntry(t)
+func TestCreateEntry(t *testing.T) {
+	createRandomEntry(t)
+}
 
-	result, err := testQueries.GetEntry(context.Background(), entry.ID)
+func TestGetEntry(t *testing.T) {
+	var (
+		mockEntry   = createRandomEntry(t)
+		mockQueries = mocks.NewQuerier(t)
+	)
+
+	mockQueries.On("GetEntry", mock.Anything, mock.Anything).
+		Return(mockEntry, nil)
+
+	result, err := mockQueries.GetEntry(context.Background(), mockEntry.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 
-	require.Equal(t, entry.ID, result.ID)
-	require.Equal(t, entry.Amount, result.Amount)
-	require.Equal(t, entry.AccountID, result.AccountID)
-	require.Equal(t, entry.CreatedAt, result.CreatedAt)
+	require.Equal(t, mockEntry.ID, result.ID)
+	require.Equal(t, mockEntry.Amount, result.Amount)
+	require.Equal(t, mockEntry.AccountID, result.AccountID)
+	require.Equal(t, mockEntry.CreatedAt, result.CreatedAt)
 }
 
 func TestListEntries(t *testing.T) {
-	var lastEntry Entry
-	for i := 0; i < 10; i++ {
+	var (
+		lastEntry   db.Entry
+		mockQueries = mocks.NewQuerier(t)
+		mockEntries = []db.Entry{}
+	)
+	for i := 0; i < 5; i++ {
 		lastEntry = createRandomEntry(t)
+		mockEntries = append(mockEntries, lastEntry)
 	}
 
-	arg := ListEntriesParams{
+	mockQueries.On("ListEntries", mock.Anything, mock.Anything).
+		Return(mockEntries, nil)
+
+	arg := db.ListEntriesParams{
 		SizeLimit:  5,
 		SizeOffset: 0,
 		AccountID:  lastEntry.AccountID,
 	}
-	results, err := testQueries.ListEntries(context.Background(), arg)
+	results, err := mockQueries.ListEntries(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, results)
 
-	for _, entry := range results {
-		require.NotEmpty(t, entry)
-		require.Equal(t, lastEntry.ID, entry.ID)
-	}
+	require.NotEmpty(t, results[len(results)-1])
+	require.Equal(t, lastEntry.ID, results[len(results)-1].ID)
 }

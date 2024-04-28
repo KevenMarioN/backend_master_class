@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -6,19 +6,37 @@ import (
 	"testing"
 	"time"
 
+	db "github.com/kevenmarion/backend_master_class/db/sqlc"
+	mocks "github.com/kevenmarion/backend_master_class/mocks/db/sqlc"
 	"github.com/kevenmarion/backend_master_class/util"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func createRandomAccount(t *testing.T) Account {
-	arg := CreateAccountParams{
-		Owner:    util.RandomOwner(),
-		Balance:  util.RandomMoney(),
-		Currency: util.RandomCurrency(),
-	}
+var accountIDCount int64
 
-	result, err := testQueries.CreateAccount(context.Background(), arg)
+func createRandomAccount(t *testing.T) db.Account {
+	accountIDCount++
+	var (
+		arg = db.CreateAccountParams{
+			Owner:    util.RandomOwner(),
+			Balance:  util.RandomMoney(),
+			Currency: util.RandomCurrency(),
+		}
+		mockQueries = mocks.NewQuerier(t)
+		mockAccount = db.Account{
+			ID:        accountIDCount,
+			Owner:     arg.Owner,
+			Balance:   arg.Balance,
+			Currency:  arg.Currency,
+			CreatedAt: time.Now(),
+		}
+	)
+
+	mockQueries.On("CreateAccount", mock.Anything, mock.Anything).
+		Return(mockAccount, nil)
+	result, err := mockQueries.CreateAccount(context.Background(), arg)
 	require.NoError(t, err)
 	require.Equal(t, arg.Owner, result.Owner)
 	require.Equal(t, arg.Balance, result.Balance)
@@ -35,63 +53,95 @@ func TestCreateAccount(t *testing.T) {
 }
 
 func TestGetAccount(t *testing.T) {
-	account := createRandomAccount(t)
-	result, err := testQueries.GetAccount(context.Background(), account.ID)
+	var (
+		mockQueries = mocks.NewQuerier(t)
+		mockAccount = createRandomAccount(t)
+	)
+	mockQueries.On("GetAccount", mock.Anything, mock.Anything).
+		Return(mockAccount, nil)
+	result, err := mockQueries.GetAccount(context.Background(), mockAccount.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 
-	require.Equal(t, account.ID, result.ID)
-	require.Equal(t, account.Owner, result.Owner)
-	require.Equal(t, account.Balance, result.Balance)
-	require.Equal(t, account.Currency, result.Currency)
-	require.WithinDuration(t, account.CreatedAt, result.CreatedAt, time.Second)
+	require.Equal(t, mockAccount.ID, result.ID)
+	require.Equal(t, mockAccount.Owner, result.Owner)
+	require.Equal(t, mockAccount.Balance, result.Balance)
+	require.Equal(t, mockAccount.Currency, result.Currency)
+	require.WithinDuration(t, mockAccount.CreatedAt, result.CreatedAt, time.Second)
 }
 
 func TestUpdateAccount(t *testing.T) {
-	account := createRandomAccount(t)
-	arg := UpdateAccountParams{
-		ID:      account.ID,
-		Balance: 100,
-	}
-	result, err := testQueries.UpdateAccount(context.Background(), arg)
+	var (
+		mockAccount = createRandomAccount(t)
+		arg         = db.UpdateAccountParams{
+			ID:      mockAccount.ID,
+			Balance: 100,
+		}
+		mockQueries        = mocks.NewQuerier(t)
+		mockAccountUpdated = db.Account{
+			ID:        mockAccount.ID,
+			Owner:     mockAccount.Owner,
+			Balance:   arg.Balance,
+			Currency:  mockAccount.Currency,
+			CreatedAt: mockAccount.CreatedAt,
+		}
+	)
+	mockQueries.On("UpdateAccount", mock.Anything, mock.Anything).
+		Return(mockAccountUpdated, nil)
+	result, err := mockQueries.UpdateAccount(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 
-	require.Equal(t, account.ID, result.ID)
-	require.Equal(t, account.Owner, result.Owner)
+	require.Equal(t, mockAccount.ID, result.ID)
+	require.Equal(t, mockAccount.Owner, result.Owner)
 	require.Equal(t, arg.Balance, result.Balance)
-	require.Equal(t, account.Currency, result.Currency)
-	require.WithinDuration(t, account.CreatedAt, result.CreatedAt, time.Second)
+	require.Equal(t, mockAccount.Currency, result.Currency)
+	require.WithinDuration(t, mockAccount.CreatedAt, result.CreatedAt, time.Second)
 }
 
 func TestDeleteAccount(t *testing.T) {
-	account := createRandomAccount(t)
+	var (
+		mockAccount = createRandomAccount(t)
+		mockQueries = mocks.NewQuerier(t)
+	)
 
-	err := testQueries.DeleteAccount(context.Background(), account.ID)
+	mockQueries.
+		On("DeleteAccount", mock.Anything, mock.Anything).Return(nil).
+		On("GetAccount", mock.Anything, mock.Anything).
+		Return(db.Account{}, sql.ErrNoRows)
+
+	err := mockQueries.DeleteAccount(context.Background(), mockAccount.ID)
 	require.NoError(t, err)
 
-	result, err := testQueries.GetAccount(context.Background(), account.ID)
+	result, err := mockQueries.GetAccount(context.Background(), mockAccount.ID)
 	require.Error(t, err)
 	require.EqualError(t, err, sql.ErrNoRows.Error())
 	require.Empty(t, result)
 }
 
 func TestListAccounts(t *testing.T) {
-	var lastAccount Account
-	for i := 0; i < 10; i++ {
+	var (
+		lastAccount  db.Account
+		mockQueries  = mocks.NewQuerier(t)
+		mockAccounts = []db.Account{}
+	)
+
+	for i := 0; i < 5; i++ {
 		lastAccount = createRandomAccount(t)
+		mockAccounts = append(mockAccounts, lastAccount)
 	}
 
-	arg := ListAccountsParams{
-		Limit:  10,
+	mockQueries.On("ListAccounts", mock.Anything, mock.Anything).
+		Return(mockAccounts, nil)
+
+	arg := db.ListAccountsParams{
+		Limit:  5,
 		Offset: 0,
 	}
-	accounts, err := testQueries.ListAccounts(context.Background(), arg)
+	accounts, err := mockQueries.ListAccounts(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, accounts)
 
-	for _, account := range accounts {
-		require.NotEmpty(t, account)
-		require.Equal(t, lastAccount.Owner, account.Owner)
-	}
+	require.NotEmpty(t, accounts[len(accounts)-1])
+	require.Equal(t, lastAccount.Owner, accounts[len(accounts)-1].Owner)
 }

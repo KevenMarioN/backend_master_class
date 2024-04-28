@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"database/sql"
@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	db "github.com/kevenmarion/backend_master_class/db/sqlc"
 	_ "github.com/lib/pq"
 )
 
@@ -14,7 +15,7 @@ const (
 	dbSource = "postgresql://root:123456@localhost:5432/simple_bank?sslmode=disable"
 )
 
-var testQueries *Queries
+var testQueries *db.Queries
 var testDB *sql.DB
 
 func TestMain(m *testing.M) {
@@ -25,6 +26,6 @@ func TestMain(m *testing.M) {
 		log.Fatal("cannot connect to db:", err)
 	}
 
-	testQueries = New(testDB)
+	testQueries = db.New(testDB)
 	os.Exit(m.Run())
 }

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kevenmarion/backend_master_class/db/mocks"
 	db "github.com/kevenmarion/backend_master_class/db/sqlc"
+	mocks "github.com/kevenmarion/backend_master_class/mocks/db/sqlc"
 	"github.com/kevenmarion/backend_master_class/util"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
