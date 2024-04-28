@@ -5,5 +5,9 @@
     "kevenmarion",
     "oneof",
     "stretchr"
+  ],
+  "conventionalCommits.scopes": [
+    "teste",
+    "main"
   ]
 }

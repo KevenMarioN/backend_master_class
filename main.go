@@ -27,6 +27,7 @@ func main() {
 
 	server := api.NewServer(db.NewStore(conn))
 	server.LoadRouters()
+	server.LoadValidators()
 
 	if err = server.Start(config.ServerAddress); err != nil {
 		log.Fatal("cannot start server:", err)

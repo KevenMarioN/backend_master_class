@@ -1,0 +1,13 @@
+package api
+
+import (
+	"github.com/go-playground/validator/v10"
+	"github.com/kevenmarion/backend_master_class/util"
+)
+
+var validCurrency validator.Func = func(fieldLevel validator.FieldLevel) bool {
+	if currency, ok := fieldLevel.Field().Interface().(string); ok {
+		util.IsSupportedCurrency(currency)
+	}
+	return false
+}
