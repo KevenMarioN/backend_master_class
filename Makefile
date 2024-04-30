@@ -25,6 +25,4 @@ server:
 mocks:
 	mockery --all --output "./db/mocks"
 
-reset: dropdb createdb migrateup
-
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc test server mocks reset
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test server mocks
